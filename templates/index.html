@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Hyper Dashboard — Team Knowledge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        .search-box {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .knowledge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .knowledge-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .knowledge-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .source-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .source-notion {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .source-slack {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .content {
+            color: #333;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+        
+        .meta {
+            color: #999;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        .score {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hyper Dashboard</h1>
+            <div class="subtitle">Your team's collective intelligence — automatically learned from Notion and Slack</div>
+        </div>
+        
+        <div class="stats-grid" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="vectorCount">—</div>
+                <div class="stat-label">Knowledge Items</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="notionCount">—</div>
+                <div class="stat-label">From Notion</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="slackCount">—</div>
+                <div class="stat-label">From Slack</div>
+            </div>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="Ask Hyper anything... e.g., 'How do we deploy?' or 'What is our database password?'">
+            <button onclick="search()">Search Knowledge</button>
+        </div>
+        
+        <h2 style="color: white; margin-bottom: 20px;">Recent Knowledge</h2>
+        <div class="knowledge-grid" id="results">
+            <div class="loading">Loading knowledge base...</div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadStats() {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            document.getElementById('vectorCount').textContent = data.total_vectors;
+            document.getElementById('notionCount').textContent = data.notion_count;
+            document.getElementById('slackCount').textContent = data.slack_count;
+        }
+        
+        async function loadRecent() {
+            const response = await fetch('/api/recent');
+            const data = await response.json();
+            displayResults(data.results);
+        }
+        
+        async function search() {
+            const query = document.getElementById('searchInput').value;
+            if (!query) return;
+            
+            document.getElementById('results').innerHTML = '<div class="loading">Searching...</div>';
+            
+            const response = await fetch('/api/search', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({query: query})
+            });
+            const data = await response.json();
+            displayResults(data.results);
+        }
+        
+        function displayResults(results) {
+            if (!results || results.length === 0) {
+                document.getElementById('results').innerHTML = '<div class="loading">No knowledge found yet. Start chatting in Slack or update Notion!</div>';
+                return;
+            }
+            
+            const html = results.map(result => {
+                const metadata = result.metadata || {};
+                const source = metadata.source || 'unknown';
+                const sourceClass = source === 'notion' ? 'source-notion' : 'source-slack';
+                const sourceName = source === 'notion' ? 'Notion' : 'Slack';
+                const title = metadata.title || metadata.channel || 'Untitled';
+                const content = metadata.content || 'No content';
+                const score = result.score ? (result.score * 100).toFixed(1) : 0;
+                const timestamp = metadata.timestamp ? new Date(metadata.timestamp).toLocaleString() : 'Unknown date';
+                
+                return `
+                    <div class="knowledge-card">
+                        <div class="source-badge ${sourceClass}">${sourceName}</div>
+                        <div style="font-weight: bold; margin-bottom: 10px;">${escapeHtml(title)}</div>
+                        <div class="content">${escapeHtml(content.substring(0, 300))}${content.length > 300 ? '...' : ''}</div>
+                        <div class="meta">
+                            <span>${timestamp}</span>
+                            ${score > 0 ? `<span class="score"> | Relevance: ${score}%</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('results').innerHTML = html;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        loadStats();
+        loadRecent();
+        
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') search();
+        });
+    </script>
+</body>
+</html>
